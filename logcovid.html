@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<!-- Load d3.js -->
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="https://d3js.org/d3-array.v2.min.js"></script>
+<script src="https://d3js.org/d3-time.v1.min.js"></script>
+<script src="https://d3js.org/d3-timer.v1.min.js"></script>
+
+<!-- Create a div where the graph will take place -->
+<div id="my_dataviz"></div>
+
+
+<script>
+
+
+// set the dimensions and margins of the graph
+const margin = {top: 10, right: 30, bottom: 90, left: 40},
+    width = 1200 - margin.left - margin.right,
+    height = 600 - margin.top - margin.bottom;
+    
+const delay = 80
+
+// append the svg object to the body of the page
+const svg = d3.select("#my_dataviz")
+  .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform",
+          "translate(" + margin.left + "," + margin.top + ")");
+
+console.log("yo")
+
+const population = {
+"AL": 4903185,
+"AK": 731545,
+"AS": 49437,
+"AZ": 7278717,
+"AR": 3017804,
+"CA": 39512223,
+"CO": 5758736,
+"CT": 3565287,
+"DE": 973764,
+"DC": 705749,
+"FL": 21477737,
+"GA": 10617423,
+"GU": 168485,
+"HI": 1415872,
+"ID": 1787065,
+"IL": 12671821,
+"IN": 6732219,
+"IA": 3155070,
+"KS": 2913314,
+"KY": 4467673,
+"LA": 4648794,
+"ME": 1344212,
+"MD": 6045680,
+"MA": 6892503,
+"MI": 9986857,
+"MN": 5639632,
+"MS": 2976149,
+"MO": 6137428,
+"MT": 1068778,
+"NE": 1934408,
+"NV": 3080156,
+"NH": 1359711,
+"NJ": 8882190,
+"NM": 2096829,
+"NY": 19453561,
+"NC": 10488084,
+"ND": 762062,
+"MP": 51433,
+"OH": 11689100,
+"OK": 3956971,
+"OR": 4217737,
+"PA": 12801989,
+"PR": 3193694,
+"RI": 1059361,
+"SC": 5148714,
+"SD": 884659,
+"TN": 6829174,
+"TX": 28995881,
+"VI": 106235,
+"UT": 3205958,
+"VT": 623989,
+"VA": 8535519,
+"WA": 7614893,
+"WV": 1792147,
+"WI": 5822434,
+"WY": 578759
+}
+
+const initial = Object.keys(population).map(s => ({state: s, positive: 1}))
+
+function decodeDate(encoded) {
+    const day = encoded % 100
+    encoded = (encoded - day) / 100
+    const month = encoded % 100
+    encoded = (encoded - month) / 100
+    const year = encoded
+    return new Date(year, month - 1, day)
+}
+
+function encodeDate(date) {
+    var encoded = date.getFullYear()
+    encoded = encoded * 100 + date.getMonth() + 1
+    encoded = encoded * 100 + date.getDate()
+    return encoded
+}
+
+function after(delay) {
+    return new Promise((resolve, reject) => d3.timer(resolve, delay))
+}
+
+function afterTrans(transition, delay) {
+    if (transition.size() > 0) {
+        return transition.end()
+    }
+    return after(delay)
+}
+
+var byDate
+
+// Parse the Data
+d3.json("https://covidtracking.com/api/v1/states/daily.json").then(function(allData) {
+
+console.log("parsed data")
+
+byDate = d3.group(allData, d => d.date)
+
+const extentDates = d3.extent(byDate.keys())
+const dates = d3.timeDay.range(decodeDate(extentDates[0]), d3.timeDay.offset(decodeDate(extentDates[1])))
+
+
+// X axis
+const x = d3.scaleBand()
+  .range([ 0, width ])
+  .domain(allData.map(d => d.state))
+  .padding(0.2);
+svg.append("g")
+  .attr("transform", "translate(0," + height + ")")
+  .call(d3.axisBottom(x))
+  .selectAll("text")
+    .attr("transform", "translate(-10,0)rotate(-45)")
+    .style("text-anchor", "end");
+
+// Add Y axis
+const y = d3.scaleLog()
+  .domain([1e-8, 1])
+  .range([ height, 0]);
+svg.append("g")
+  .call(d3.axisLeft(y).tickFormat(x=> Math.pow(10, Math.log10(x) + 5)).tickValues([1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1]));
+
+
+function update(data) {
+    if (data === undefined) {
+        console.log("no data for date")
+        return after(delay)
+    }
+    console.log("updating")
+    
+    var bars = svg.selectAll("rect")
+    var bar = bars.data(data.filter(d => d.positive > 0), d => d.state)
+    
+    formatBar = b => b
+        .attr("x", d => x(d.state))
+        .attr("width", x.bandwidth())
+        .attr("fill", "#69b3a2")
+        .attr("height", d => y(1/population[d.state]) - y(d.positive/population[d.state]))
+        .attr("y", d => y(d.positive/population[d.state]))
+        
+    trans = bars.transition().duration(delay).ease(d3.easeLinear).call(formatBar)
+    
+    bar.enter().append("rect").call(formatBar)
+    
+    return afterTrans(trans, delay)
+}
+
+
+async function animate() {
+    await update(initial)
+    
+    for (let date of dates) {
+        console.log(date, encodeDate(date))
+        await update(byDate.get(encodeDate(date)))
+    }
+}
+
+animate()
+
+})
+
+</script>
