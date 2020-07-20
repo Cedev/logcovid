@@ -1,98 +1,187 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
+<head>
+  <meta charset="utf-8">
 
-<!-- Load d3.js -->
-<script src="https://d3js.org/d3.v5.min.js"></script>
-<script src="https://d3js.org/d3-array.v2.min.js"></script>
-<script src="https://d3js.org/d3-time.v1.min.js"></script>
-<script src="https://d3js.org/d3-timer.v1.min.js"></script>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="https://d3js.org/d3-array.v2.min.js"></script>
+  <script src="https://d3js.org/d3-time.v1.min.js"></script>
+  <script src="https://d3js.org/d3-timer.v1.min.js"></script>
 
-<!-- Create a div where the graph will take place -->
-<div id="my_dataviz"></div>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    
+    .title {
+        font-size: large;
+    }
+    
+    .description {
+        width: 40em;
+        padding-bottom: 1em;
+        clear: both;
+    }
+    
+    #repeat {
+        display: block;
+        float: left;
+        padding-bottom: 1em;
+        visibility: hidden;
+    }
+    
+    #date {
+        font-size: large;
+        padding-bottom: 1em;
+    }
+    
+    #monthDay {
+        text-align: right;
+        float: right;
+    }
+    
+    #day {
+        display: inline-block;
+        width: 1em;
+    }
+    
+    .bar {
+        fill: #9e1a0b;
+    }
+    
+    .bar.selected {
+        fill: black
+    }
+  </style>
+</head>
 
+<div class="title">Positive COVID-19 cases per 100,000 (log scale)</div>
+<div id="per100k"></div>
+<div id="date">
+    <span id="repeat">⏮</span>
+    <div id="monthDay">
+        <span id="month"></span> <span id="day"></span>
+    </div>
+</div>
+
+<div class="description">
+This animation shows the growth in confirmed COVID-19 cases in the US.
+</div>
+
+<div class="description">
+The top of the chart represents everybody having a confirmed case.
+The bottom of a bar represents a single confirmed case in the state.
+The bar for each state grows from a single case in the entire state towards
+everybody having a confirmed case.
+States with larger populations start lower because, from a single case,
+more growth is required to reach the entire population.
+</div>
+
+<div class="description">
+A state without a bar has no confirmed COVID-19 cases.
+</div>
+
+<div class="description">
+Exponential growth at a constant rate would appear as a bar smoothly extending
+upwards at a constant speed.
+</div>
 
 <script>
 
-
 // set the dimensions and margins of the graph
-const margin = {top: 10, right: 30, bottom: 90, left: 40},
-    width = 1200 - margin.left - margin.right,
-    height = 600 - margin.top - margin.bottom;
+const margin = {top: 10, right: 10, bottom: 30, left: 40},
+  width = 1200 - margin.left - margin.right,
+  height = 650 - margin.top - margin.bottom;
     
 const delay = 80
 
-// append the svg object to the body of the page
-const svg = d3.select("#my_dataviz")
+const svg = d3.select("#per100k")
   .append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
   .append("g")
-    .attr("transform",
-          "translate(" + margin.left + "," + margin.top + ")");
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-console.log("yo")
+d3.select("#date")
+  .style("margin-left", margin.left + "px")
+  .style("width", width + "px")
+    
+d3.selectAll(".title")
+  .style("margin-left", margin.left + "px")
+
+d3.selectAll(".description")
+  .style("margin-left", margin.left + "px")
+
+const repeat = d3.select("#repeat")
+
+const month = d3.select("#month")
+const day = d3.select("#day")
+
+const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 const population = {
-"AL": 4903185,
-"AK": 731545,
-"AS": 49437,
-"AZ": 7278717,
-"AR": 3017804,
-"CA": 39512223,
-"CO": 5758736,
-"CT": 3565287,
-"DE": 973764,
-"DC": 705749,
-"FL": 21477737,
-"GA": 10617423,
-"GU": 168485,
-"HI": 1415872,
-"ID": 1787065,
-"IL": 12671821,
-"IN": 6732219,
-"IA": 3155070,
-"KS": 2913314,
-"KY": 4467673,
-"LA": 4648794,
-"ME": 1344212,
-"MD": 6045680,
-"MA": 6892503,
-"MI": 9986857,
-"MN": 5639632,
-"MS": 2976149,
-"MO": 6137428,
-"MT": 1068778,
-"NE": 1934408,
-"NV": 3080156,
-"NH": 1359711,
-"NJ": 8882190,
-"NM": 2096829,
-"NY": 19453561,
-"NC": 10488084,
-"ND": 762062,
-"MP": 51433,
-"OH": 11689100,
-"OK": 3956971,
-"OR": 4217737,
-"PA": 12801989,
-"PR": 3193694,
-"RI": 1059361,
-"SC": 5148714,
-"SD": 884659,
-"TN": 6829174,
-"TX": 28995881,
-"VI": 106235,
-"UT": 3205958,
-"VT": 623989,
-"VA": 8535519,
-"WA": 7614893,
-"WV": 1792147,
-"WI": 5822434,
-"WY": 578759
+  "AL": 4903185,
+  "AK": 731545,
+  "AS": 49437,
+  "AZ": 7278717,
+  "AR": 3017804,
+  "CA": 39512223,
+  "CO": 5758736,
+  "CT": 3565287,
+  "DE": 973764,
+  "DC": 705749,
+  "FL": 21477737,
+  "GA": 10617423,
+  "GU": 168485,
+  "HI": 1415872,
+  "ID": 1787065,
+  "IL": 12671821,
+  "IN": 6732219,
+  "IA": 3155070,
+  "KS": 2913314,
+  "KY": 4467673,
+  "LA": 4648794,
+  "ME": 1344212,
+  "MD": 6045680,
+  "MA": 6892503,
+  "MI": 9986857,
+  "MN": 5639632,
+  "MS": 2976149,
+  "MO": 6137428,
+  "MT": 1068778,
+  "NE": 1934408,
+  "NV": 3080156,
+  "NH": 1359711,
+  "NJ": 8882190,
+  "NM": 2096829,
+  "NY": 19453561,
+  "NC": 10488084,
+  "ND": 762062,
+  "MP": 51433,
+  "OH": 11689100,
+  "OK": 3956971,
+  "OR": 4217737,
+  "PA": 12801989,
+  "PR": 3193694,
+  "RI": 1059361,
+  "SC": 5148714,
+  "SD": 884659,
+  "TN": 6829174,
+  "TX": 28995881,
+  "VI": 106235,
+  "UT": 3205958,
+  "VT": 623989,
+  "VA": 8535519,
+  "WA": 7614893,
+  "WV": 1792147,
+  "WI": 5822434,
+  "WY": 578759
 }
+
+population["US"] = Object.keys(population).reduce((t, s) => t + population[s], 0)
 
 const initial = Object.keys(population).map(s => ({state: s, positive: 1}))
 
+// Convert from a date encoded in a number e.g. 20200719 to 2020 July 19
 function decodeDate(encoded) {
     const day = encoded % 100
     encoded = (encoded - day) / 100
@@ -102,6 +191,7 @@ function decodeDate(encoded) {
     return new Date(year, month - 1, day)
 }
 
+// Convert a date e.g. 2020 July 19 to a number 20200719
 function encodeDate(date) {
     var encoded = date.getFullYear()
     encoded = encoded * 100 + date.getMonth() + 1
@@ -127,16 +217,27 @@ d3.json("https://covidtracking.com/api/v1/states/daily.json").then(function(allD
 
 console.log("parsed data")
 
+// Calculate data for the entire US
+const xTicks = Array.from(allData.map(d => d.state))
+xTicks.push("US")
+
 byDate = d3.group(allData, d => d.date)
 
+for (let states of byDate) {
+    positive = states[1].filter(d => d.positive > 0).reduce((t, d) => t + d.positive, 0)
+    if (positive > 0) {
+        states[1].push({"state": "US", "positive": positive}, 0)
+    }
+}
+
+// Time domain
 const extentDates = d3.extent(byDate.keys())
 const dates = d3.timeDay.range(decodeDate(extentDates[0]), d3.timeDay.offset(decodeDate(extentDates[1])))
 
-
 // X axis
 const x = d3.scaleBand()
-  .range([ 0, width ])
-  .domain(allData.map(d => d.state))
+  .range([0, width])
+  .domain(xTicks)
   .padding(0.2);
 svg.append("g")
   .attr("transform", "translate(0," + height + ")")
@@ -145,13 +246,26 @@ svg.append("g")
     .attr("transform", "translate(-10,0)rotate(-45)")
     .style("text-anchor", "end");
 
+const x_tick = label => d3.selectAll('.tick text').filter(x => x == label)
+
 // Add Y axis
 const y = d3.scaleLog()
-  .domain([1e-8, 1])
-  .range([ height, 0]);
+  .domain([1e-9, 1])
+  .range([height, 0]);
 svg.append("g")
-  .call(d3.axisLeft(y).tickFormat(x=> Math.pow(10, Math.log10(x) + 5)).tickValues([1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1]));
+  .call(
+    d3.axisLeft(y)
+      .tickFormat(x=> Math.pow(10, Math.log10(x) + 5))
+      .tickValues([1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1])); 
 
+// Saturation line
+svg.append("line")
+  .attr("x1", 0)
+  .attr("x2", width)
+  .attr("y1", y(1))
+  .attr("y2", y(1))
+  .attr("stroke", "#9e1a0b")
+  .attr("stroke-width", 3)
 
 function update(data) {
     if (data === undefined) {
@@ -164,28 +278,42 @@ function update(data) {
     var bar = bars.data(data.filter(d => d.positive > 0), d => d.state)
     
     formatBar = b => b
-        .attr("x", d => x(d.state))
-        .attr("width", x.bandwidth())
-        .attr("fill", "#69b3a2")
-        .attr("height", d => y(1/population[d.state]) - y(d.positive/population[d.state]))
-        .attr("y", d => y(d.positive/population[d.state]))
+      .attr("x", d => x(d.state))
+      .attr("height", d => y(1/population[d.state]) - y(d.positive/population[d.state]))
+      .attr("y", d => y(d.positive/population[d.state]))
         
     trans = bars.transition().duration(delay).ease(d3.easeLinear).call(formatBar)
-    
-    bar.enter().append("rect").call(formatBar)
+        
+    bar.enter().append("rect")
+      .attr("width", x.bandwidth())
+      .attr("class", "bar")
+      .on("click", function() {
+          d3.select(this).classed("selected", !d3.select(this).classed("selected"));
+      })
+  		.on("mouseover", d => x_tick(d.state).style("font-weight", "bold"))
+  		.on("mouseout", d => x_tick(d.state).style("font-weight", "normal"))
+      .call(formatBar)
     
     return afterTrans(trans, delay)
 }
 
-
 async function animate() {
+    repeat.style("visibility", "hidden")
+
     await update(initial)
     
     for (let date of dates) {
+        month.text(months[date.getMonth()])
+        day.text(date.getDate())
+        
         console.log(date, encodeDate(date))
         await update(byDate.get(encodeDate(date)))
     }
+    
+    repeat.style("visibility", "inherit")
 }
+
+repeat.on("click", animate)
 
 animate()
 
