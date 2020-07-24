@@ -228,7 +228,7 @@ byDate = d3.group(allData, d => d.date)
 for (let states of byDate) {
     positive = states[1].filter(d => d.positive > 0).reduce((t, d) => t + d.positive, 0)
     if (positive > 0) {
-        states[1].push({"state": "US", "positive": positive}, 0)
+        states[1].push({"state": "US", "positive": positive})
     }
 }
 
