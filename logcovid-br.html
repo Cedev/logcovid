@@ -163,7 +163,7 @@ async function load() {
     }
     population["BR"] = totalPopulation
     
-    initial = Object.keys(population).map(s => ({state: s, positive: 0}))
+    initial = Object.keys(population).map(s => ({state: s, positive: 1}))
 
     const xTicks = Array.from(states.map(d => d.nome))
     xTicks.sort()
@@ -188,7 +188,7 @@ async function load() {
     byDate = d3.group(table, d => encodeDate(d.date))
 
     for (let states of byDate) {
-        positive = states[1].filter(d => d.positive > 0).reduce((t, d) => t + d.positive, 0)
+        positive = states[1].reduce((t, d) => t + d.positive, 0)
         states[1].push({"state": "BR", "positive": positive})
     }
 
@@ -252,8 +252,6 @@ async function load() {
           .on("mouseover", d => x_tick(d.state).style("font-weight", "bold"))
           .on("mouseout", d => x_tick(d.state).style("font-weight", "normal"))
           .call(formatBar)
-          
-        bar.exit().remove()
         
         return afterTrans(trans, delay)
     }
@@ -268,6 +266,7 @@ async function load() {
             month.text(months[date.getMonth()])
             day.text(date.getDate())
             
+            console.log(date, encodeDate(date))
             await update(byDate.get(encodeDate(date)))
         }
         
