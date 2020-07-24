@@ -181,7 +181,7 @@ const population = {
 
 population["US"] = Object.keys(population).reduce((t, s) => t + population[s], 0)
 
-const initial = Object.keys(population).map(s => ({state: s, positive: 1}))
+const initial = Object.keys(population).map(s => ({state: s, positive: 0}))
 
 // Convert from a date encoded in a number e.g. 20200719 to 2020 July 19
 function decodeDate(encoded) {
@@ -277,12 +277,14 @@ function update(data) {
     console.log("updating")
     
     var bars = svg.selectAll("rect")
-    var bar = bars.data(data.filter(d => d.positive > 0), d => d.state)
+    var bar = bars.data(data, d => d.state)
+    
+    barHeight = d => d.positive > 0 ? Math.max(y(1/population[d.state]) - y(d.positive/population[d.state]), 1) : 0
     
     formatBar = b => b
       .attr("x", d => x(d.state))
-      .attr("height", d => y(1/population[d.state]) - y(d.positive/population[d.state]))
-      .attr("y", d => y(d.positive/population[d.state]))
+      .attr("height", barHeight)
+      .attr("y", d => y(1/population[d.state]) - barHeight(d))
         
     trans = bars.transition().duration(delay).ease(d3.easeLinear).call(formatBar)
         

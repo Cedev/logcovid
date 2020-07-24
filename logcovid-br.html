@@ -163,7 +163,7 @@ async function load() {
     }
     population["BR"] = totalPopulation
     
-    initial = Object.keys(population).map(s => ({state: s, positive: 1}))
+    initial = Object.keys(population).map(s => ({state: s, positive: 0}))
 
     const xTicks = Array.from(states.map(d => d.nome))
     xTicks.sort()
@@ -234,12 +234,14 @@ async function load() {
         console.log("updating")
         
         var bars = svg.selectAll("rect")
-        var bar = bars.data(data.filter(d => d.positive > 0), d => d.state)
+        var bar = bars.data(data, d => d.state)
+        
+        barHeight = d => d.positive > 0 ? Math.max(y(1/population[d.state]) - y(d.positive/population[d.state]), 1) : 0
         
         formatBar = b => b
           .attr("x", d => x(d.state))
-          .attr("height", d => y(1/population[d.state]) - y(d.positive/population[d.state]))
-          .attr("y", d => y(d.positive/population[d.state]))
+          .attr("height", barHeight)
+          .attr("y", d => y(1/population[d.state]) - barHeight(d))
             
         trans = bars.transition().duration(delay).ease(d3.easeLinear).call(formatBar)
             
