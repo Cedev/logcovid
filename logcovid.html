@@ -215,7 +215,7 @@ function afterTrans(transition, delay) {
 var byDate
 
 // Parse the Data
-d3.json("https://covidtracking.com/api/v1/states/daily.json").then(function(allData) {
+d3.json("https://cors-anywhere.herokuapp.com/https://covidtracking.com/api/v1/states/daily.json").then(function(allData) {
 
 console.log("parsed data")
 
